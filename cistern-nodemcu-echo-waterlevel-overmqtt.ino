@@ -8,8 +8,6 @@
 
 using namespace std;
 
-#define SERIAL_BAUDRATE                 115200
-
 const double pi = 3.14159265359;
 const double r = CISTERN_HEIGHT / 2.0;
 
@@ -32,18 +30,27 @@ void wifiSetup() {
     WiFi.mode(WIFI_STA);
 
     // Connect
-    Serial.printf("[WIFI] Connecting to %s ", WIFI_SSID);
+    //Serial.printf("[WIFI] Connecting to %s ", WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 
     // Wait
     while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(100);
+        digitalWrite(13, HIGH);
+        //Serial.print(".");
+        delay(300);
+        digitalWrite(13,LOW);
     }
-    Serial.println();
+    //Serial.println();
 
     // Connected!
-    Serial.printf("[WIFI] STATION Mode, SSID: %s, IP address: %s\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+    // Use LED on GPIO13 to visualize Wifi-Connected Status
+    digitalWrite(13,HIGH);
+    delay(200);
+    digitalWrite(13, LOW);
+    delay(200);
+    digitalWrite(13,HIGH);
+    delay(200);
+    digitalWrite(13, LOW);
     
     setupOTA();
 }
@@ -61,24 +68,11 @@ void setupOTA(){
     Serial.println("Start updating " + type);
   });
   ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
-    }
+    //This can be used for debugging, if RX/TX not neeeded for Sensor
   });
   ArduinoOTA.begin();
 }
@@ -89,13 +83,10 @@ void setMaxVolume(){
 
 void setup() {
 
+    pinMode (3, FUNCTION_3); //Sets the RX-Port of Sonoff Basic R2 as GPIO
     pinMode(TRIGGER_PIN, OUTPUT); // Sets the trigPin as an Output
     pinMode(ECHO_PIN, INPUT); // Sets the echoPin as an Input
-
-    // Init serial port and clean garbage
-    Serial.begin(SERIAL_BAUDRATE);
-    Serial.println();
-    Serial.println();
+    pinMode(13, OUTPUT); //Sets the LED GPIO on Sonoff Basic R2 as Output
 
     // Wifi
     wifiSetup();
@@ -111,7 +102,6 @@ void setup() {
 
 void ensureMQTTConnection (){
   if (!client.connected()) {
-    Serial.println("Attempting MQTT connection...");
     // Attempt to connect
 
     if (MQTT_SERVER_USER_ID != "" && MQTT_SERVER_PASS != ""){
@@ -120,12 +110,21 @@ void ensureMQTTConnection (){
     else (client.connect(MQTT_CLIENT_NAME));
     
     if(client.connected()){
-      Serial.println("connected");
+      //Visualize MQTT-connected state through LED
+      digitalWrite(13,HIGH);
+      delay(300);
+      digitalWrite(13,LOW);
+      delay(300);
+      digitalWrite(13,HIGH);
+      delay(300);
+      digitalWrite(13,LOW);
+      delay(300);
+      digitalWrite(13,HIGH);
+      delay(300);
+      digitalWrite(13,LOW);
+      delay(500);
     } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
+
       delay(5000);
     }
   }
@@ -136,7 +135,7 @@ int getDistanceFromSensor(){
   int distance;
     
     
-   // Sets the TRIGGER_PIN on HIGH state for 15 micro seconds
+   // Sets the TRIGGER_PIN on HIGH state for 20 micro seconds
     digitalWrite(TRIGGER_PIN, HIGH);
     delayMicroseconds(TRIGGER_PULSE_WIDTH);
     digitalWrite(TRIGGER_PIN, LOW);
@@ -147,34 +146,16 @@ int getDistanceFromSensor(){
     // Calculating the distance
     distance= duration*0.034/2 + SENSOR_OFFSET;
 
-
     return distance;
    }
-   
-vector<int> getWaterlevel(){
-  size_t size = SAMPLE_SIZE;
-  vector<int> readings(size);
-  
-  for(int i = 0; i<size;i++){
-    int waterlevel = getDistanceFromSensor();
-    while (waterlevel  < SENSOR_DISTANCE_TO_MAX_VOLUME || waterlevel > CISTERN_HEIGHT + SENSOR_DISTANCE_TO_MAX_VOLUME +2 ){
-      Serial.println("Wrong Reading... repeating...");
-      delay(300);
-      waterlevel = getDistanceFromSensor();
-    }
-    readings[i]= waterlevel - SENSOR_DISTANCE_TO_MAX_VOLUME;
-    delay(TIME_PERIOD_BETWEEN_READINGS);
-  }
-  return readings;
-}
-
 
 void loop() {   
     ensureMQTTConnection();
     static unsigned long last = millis();
     if (millis() - last >= IDLE_TIME *1000) {
         last = millis();
-        int waterlevel = getMean(filteredResult(getWaterlevel()));
+        digitalWrite(13,HIGH); //Enlighten LED while working, uncomment for not using the LED on Sonoff Basic R2
+        int waterlevel = getDistanceFromSensor();
         char cdist[16];
         itoa(waterlevel, cdist, 10);
         client.publish(MQTT_TOPIC_NAME_LEVEL_CM, cdist);
@@ -190,6 +171,7 @@ void loop() {
         char cPro[16];
         itoa((int)percent, cPro, 10);
         client.publish(MQTT_TOPIC_NAME_LEVEL_PERCENT, cPro);
+        digitalWrite(13,LOW);
     }
     client.loop();
     ArduinoOTA.handle();
