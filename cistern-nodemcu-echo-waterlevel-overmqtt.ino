@@ -149,13 +149,30 @@ int getDistanceFromSensor(){
     return distance;
    }
 
+vector<int> getWaterlevel(){
+  size_t size = SAMPLE_SIZE;
+  vector<int> readings(size);
+  
+  for(int i = 0; i<size;i++){
+    int waterlevel = getDistanceFromSensor();
+    while (waterlevel  < SENSOR_DISTANCE_TO_MAX_VOLUME || waterlevel > CISTERN_HEIGHT + SENSOR_DISTANCE_TO_MAX_VOLUME +2 ){
+      delay(300);
+      waterlevel = getDistanceFromSensor();
+    }
+    readings[i]= waterlevel - SENSOR_DISTANCE_TO_MAX_VOLUME;
+    delay(TIME_PERIOD_BETWEEN_READINGS);
+  }
+  return readings;
+}
+
 void loop() {   
     ensureMQTTConnection();
     static unsigned long last = millis();
     if (millis() - last >= IDLE_TIME *1000) {
         last = millis();
         digitalWrite(13,HIGH); //Enlighten LED while working, uncomment for not using the LED on Sonoff Basic R2
-        int waterlevel = getDistanceFromSensor();
+        //int waterlevel = getDistanceFromSensor();
+        int waterlevel = getMean(filteredResult(getWaterlevel()));
         char cdist[16];
         itoa(waterlevel, cdist, 10);
         client.publish(MQTT_TOPIC_NAME_LEVEL_CM, cdist);

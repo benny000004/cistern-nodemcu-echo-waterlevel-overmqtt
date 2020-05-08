@@ -1,7 +1,7 @@
-#define WIFI_SSID ""       //enter SSID and pass without <>
-#define WIFI_PASS ""
+#define WIFI_SSID "SSID"       //enter SSID and pass without <>
+#define WIFI_PASS "PASS"
 
-#define MQTT_SERVER_IP ""
+#define MQTT_SERVER_IP "SERVER_IP"
 #define MQTT_SERVER_PORT 1883
 
 #define MQTT_CLIENT_NAME "cistern-sensor"
@@ -12,7 +12,7 @@
 #define MQTT_TOPIC_NAME_LEVEL_LITERS "cistern/level/liters"
 #define MQTT_TOPIC_NAME_LEVEL_CM "cistern/level/cm"
 
-#define TRIGGER_PIN 2  //~GPIO2 (Sonoff Basic R2 IO2)
+#define TRIGGER_PIN 2  //~GPIO2 (Sonoff Basic R2)
 #define ECHO_PIN 3     //~GPIO3 (Sonoff Basic R2 RX PIN)
 
 #define SENSOR_DISTANCE_TO_MAX_VOLUME 0        // in cm - minimum is 21
@@ -21,7 +21,7 @@
 
 #define IDLE_TIME 60                      // in seconds (Standard 60)
 
-#define TIME_PERIOD_BETWEEN_READINGS 1   // in seconds
+#define TIME_PERIOD_BETWEEN_READINGS 500   // in milliseconds
 #define SAMPLE_SIZE 10
 
 #define CISTERN_HEIGHT 102      // in cm
